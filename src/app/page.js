@@ -1,43 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Share2, Mail, Flame, ThumbsUp } from "lucide-react"; // 아이콘 추가
+import { Users, Share2, Mail, Flame, ThumbsUp } from "lucide-react"; 
 import Link from "next/link"; 
 
 export default function Home() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 데이터 가져오는 함수 (재사용을 위해 분리)
+  // ★ [수정됨] 사장님의 진짜 Render 주소로 교체했습니다!
+  const API_URL = "https://vent-fab0.onrender.com";
+
   const fetchData = async () => {
     try {
-      // ★ 본인의 Render 주소로 잘 되어있는지 확인!
-      const res = await fetch("https://vent-api-어쩌구.onrender.com/api/complaints");
+      // 1. 목록 가져오기 주소 수정완료
+      const res = await fetch(`${API_URL}/api/complaints`);
       const data = await res.json();
-      
-      // 이번에는 서버에서 받은 데이터를 그대로 씁니다 (이미 서버가 저장할 때 중복 처리 등은 안 하지만, 리스트는 다 보여줌)
-      // *만약 같은 제품끼리 묶어서 보여주고 싶다면 기존 로직 유지, 
-      // *지금은 '개별 이슈'에 투표하는 기능이므로 리스트를 그대로 보여주는 게 투표하기엔 더 직관적일 수 있습니다.
-      // *하지만 사장님의 기존 기획(제품별 묶음)을 유지하면서 '대표'에 투표하게 하려면 로직이 복잡해집니다.
-      // *일단 '제품별 묶음' 로직을 유지하되, 투표는 '그 제품 이름'에 투표하는 걸로 시각적으로 처리하겠습니다.
       
       const stats = {};
         
       data.forEach(item => {
         const key = item.product.trim().toUpperCase(); 
-        // 가장 먼저 등록된 녀석의 ID를 대표 ID로 씁니다.
         if (!stats[key]) {
           stats[key] = {
-            id: item.id, // 대표 ID (투표할 때 쓸 ID)
+            id: item.id,
             brand: item.brand,
             product: item.product.trim(), 
             issue: item.issue, 
-            count: item.count, // DB에 저장된 실제 카운트 사용
+            count: item.count,
           };
         } else {
-             // 묶인 애들은 카운트만 합산하는 게 아니라, DB 카운트 중 가장 큰 값을 쓰거나 해야 하는데
-             // 지금 구조상 DB 'count' 컬럼을 믿는 게 가장 정확합니다.
-             // 중복된 제품명이 있으면 그 중 가장 count가 높은 걸 보여주도록 합시다.
              if(item.count > stats[key].count) {
                  stats[key].count = item.count;
                  stats[key].id = item.id;
@@ -74,7 +66,6 @@ export default function Home() {
   };
 
   const handleShare = async (item) => {
-    // ... (기존 공유 코드 동일)
     const shareData = {
       title: `🚨 [VENT] ${item.product} 이슈 공론화`,
       text: `${item.brand} ${item.product} 문제 해결을 위해 화력이 필요합니다!\n현재 ${item.count}명이 모여서 '${getEvolutionStage(item.count).name}'가 되었습니다. 함께해주세요.`,
@@ -89,11 +80,11 @@ export default function Home() {
     } catch (err) {}
   };
 
-  // 🔥 [새로 추가된 기능] 공감 투표 함수
+  // 🔥 공감 투표 함수
   const handleVote = async (id) => {
       try {
-          // ★ 본인의 Render 주소 확인!
-          const res = await fetch("https://vent-fab0.onrender.com/api/complaints/api/vote", {
+          // 2. 투표 주소 수정완료 (중복된 /api/complaints 제거함)
+          const res = await fetch(`${API_URL}/api/vote`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ complaint_id: id })
@@ -103,7 +94,7 @@ export default function Home() {
           
           if (result.message === "SUCCESS") {
               alert("🔥 화력 보태기 성공! (진화에 한 걸음 다가갔습니다)");
-              fetchData(); // 데이터 다시 불러와서 숫자 업데이트
+              fetchData(); 
           } else if (result.message === "ALREADY_VOTED") {
               alert("✋ 이미 공감하셨습니다. (1인 1회)");
           } else {
@@ -182,9 +173,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 하단 버튼 영역 */}
               <div className="flex gap-2 pt-4 border-t border-gray-100">
-                {/* 🔥 공감 버튼 */}
                 <button 
                   onClick={() => handleVote(item.id)}
                   className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 group border border-red-100"
@@ -206,8 +195,6 @@ export default function Home() {
           );
         })}
       </section>
-      
-      {/* 푸터 생략 (기존과 동일) */}
     </main>
   );
 }
