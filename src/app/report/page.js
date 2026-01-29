@@ -20,7 +20,7 @@ export default function ReportPage() {
 
     try {
       // 8001번 포트로 전송
-      const response = await fetch("http://127.0.0.1:8001/api/report", {
+      const response = await fetch("https://vent-fab0.onrender.com/api/report", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

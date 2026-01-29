@@ -11,7 +11,7 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8001/api/complaints");
+        const res = await fetch("https://vent-fab0.onrender.com/api/complaints");
         const data = await res.json();
         
         const stats = {};
