@@ -1,24 +1,20 @@
-# backend/main.py (Supabase 버전)
-
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
-import os
-from datetime import datetime
+import re
 
 app = FastAPI()
 
-# 1. 보안 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # 배포를 위해 모든 곳에서 허용
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 2. Supabase 연결 설정 (여기에 아까 복사한 값을 넣으세요!)
+# ★ 여기에 사장님의 Supabase 키를 넣어주세요!
 url: str = "https://sjdsnkwxpbhrddtmikza.supabase.co"
 key: str = "sb_publishable_tWA8ynGOhj5dXb_MwB3SIg_VsC8xC9N"
 
@@ -29,29 +25,80 @@ class Complaint(BaseModel):
     product: str
     issue: str
 
-# 3. 불만 접수 (POST) -> Supabase에 저장
+class Vote(BaseModel):
+    complaint_id: int
+
+def clean_text(text: str) -> str:
+    if not text: return ""
+    bad_words = ["시발", "씨발", "병신", "개새끼", "지랄", "fuck", "shit", "미친", "죽어"]
+    for word in bad_words:
+        text = text.replace(word, "🤬") 
+    phone_pattern = r'01[016789][-\s]?[0-9]{3,4}[-\s]?[0-9]{4}'
+    text = re.sub(phone_pattern, "010-****-****", text)
+    return text
+
+# 불만 등록
 @app.post("/api/report")
 def create_complaint(data: Complaint):
-    print(f"🔥 데이터 수신: {data.brand} - {data.product}")
+    clean_brand = clean_text(data.brand)
+    clean_product = clean_text(data.product)
+    clean_issue = clean_text(data.issue)
     
-    # Supabase에 데이터 쏘기
     try:
+        # 처음 등록할 때 count는 1로 시작
         response = supabase.table("complaints").insert({
-            "brand": data.brand,
-            "product": data.product,
-            "issue": data.issue
+            "brand": clean_brand,
+            "product": clean_product,
+            "issue": clean_issue,
+            "count": 1 
         }).execute()
-        print("✅ Supabase 저장 성공!")
         return {"message": "저장 성공", "data": response.data}
     except Exception as e:
         print(f"❌ 저장 실패: {e}")
         return {"message": "저장 실패", "error": str(e)}
 
-# 4. 불만 조회 (GET) -> Supabase에서 가져오기
+# 🔥 [추가된 기능] 공감 투표 (IP 체크)
+@app.post("/api/vote")
+def vote_complaint(data: Vote, request: Request):
+    # 1. 사용자 IP 가져오기 (Render 같은 서버 뒤에 있을 때를 대비해 x-forwarded-for 확인)
+    client_ip = request.headers.get('x-forwarded-for')
+    if not client_ip:
+        client_ip = request.client.host
+    
+    print(f"🔥 투표 시도: ID {data.complaint_id} / IP {client_ip}")
+
+    try:
+        # 2. 이미 투표했는지 장부(votes) 뒤져보기
+        check = supabase.table("votes").select("*").eq("complaint_id", data.complaint_id).eq("ip_address", client_ip).execute()
+        
+        if check.data:
+            # 이미 기록이 있으면 거절!
+            return {"message": "ALREADY_VOTED"}
+
+        # 3. 투표 안 했으면 -> 장부에 기록하고, 카운트 +1
+        # (1) 기록 남기기
+        supabase.table("votes").insert({
+            "complaint_id": data.complaint_id,
+            "ip_address": client_ip
+        }).execute()
+
+        # (2) 카운트 증가시키기 (기존 글 불러와서 +1 업데이트)
+        # 현재 카운트 가져오기
+        current_data = supabase.table("complaints").select("count").eq("id", data.complaint_id).execute()
+        current_count = current_data.data[0]['count']
+        
+        # +1 해서 업데이트
+        supabase.table("complaints").update({"count": current_count + 1}).eq("id", data.complaint_id).execute()
+
+        return {"message": "SUCCESS"}
+
+    except Exception as e:
+        print(f"❌ 투표 에러: {e}")
+        return {"message": "ERROR", "error": str(e)}
+
 @app.get("/api/complaints")
 def get_complaints():
     try:
-        # 모든 데이터 가져오기
         response = supabase.table("complaints").select("*").execute()
         return response.data
     except Exception as e:
