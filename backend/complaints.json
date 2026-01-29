@@ -1,0 +1,26 @@
+[
+    {
+        "brand": "apple",
+        "product": "iphone16",
+        "issue": "hot",
+        "timestamp": "2026-01-29 11:23:48"
+    },
+    {
+        "brand": "apple",
+        "product": "iphone16",
+        "issue": "cold",
+        "timestamp": "2026-01-29 11:24:15"
+    },
+    {
+        "brand": "Samsung",
+        "product": "galaxy24 ultra",
+        "issue": "hot\n",
+        "timestamp": "2026-01-29 11:39:23"
+    },
+    {
+        "brand": "네오플",
+        "product": "개종민",
+        "issue": "던파망함",
+        "timestamp": "2026-01-29 12:21:56"
+    }
+]
