@@ -255,4 +255,29 @@ function ComplaintCard({ item, index, fetchData }) {
         <button onClick={toggleComments} className="flex-1 bg-gray-50 text-gray-600 hover:bg-gray-100 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition">
           <MessageSquare className="w-4 h-4" /> 댓글
         </button>
-        <button onClick={handleShare} className="w-12 bg
+        <button onClick={handleShare} className="w-12 bg-neutral-900 text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95">
+          <Share2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      {showComments && (
+        <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 -mx-6 px-6 pb-2">
+            <div className="flex gap-2 mb-4">
+                <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && submitComment()} placeholder="의견을 남겨주세요" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-neutral-900" />
+                <button onClick={submitComment} className="bg-neutral-900 text-white px-3 rounded-lg hover:bg-neutral-700"><Send className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+                {comments.length === 0 ? (<p className="text-xs text-gray-400 text-center py-2">아직 댓글이 없습니다.</p>) : (
+                    comments.map((cmt) => (
+                        <div key={cmt.id} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm text-sm">
+                            <p className="text-gray-800">{cmt.content}</p>
+                            <span className="text-[10px] text-gray-400 mt-1 block">{new Date(cmt.created_at).toLocaleDateString()}</span>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+      )}
+    </div>
+  );
+}
