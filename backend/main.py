@@ -14,9 +14,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ★ 여기에 사장님의 Supabase 키를 넣어주세요!
-url: str = "https://sjdsnkwxpbhrddtmikza.supabase.co"
-key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZHNua3d4cGJocmRkdG1pa3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTI5NjEsImV4cCI6MjA4NTIyODk2MX0.wQgyUPAI_eDIye-umVryhxk2LOe3QyQZiUgWYVcDyR0"
+# ★ 여기에 사장님의 진짜 Supabase 키(eyJ...)를 넣어주세요!
+url: str = "https://sjdsnkwxpbhrddtmikza.supabase.co" 
+key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZHNua3d4cGJocmRkdG1pa3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTI5NjEsImV4cCI6MjA4NTIyODk2MX0.wQgyUPAI_eDIye-umVryhxk2LOe3QyQZiUgWYVcDyR0" 
 
 supabase: Client = create_client(url, key)
 
@@ -28,6 +28,10 @@ class Complaint(BaseModel):
 class Vote(BaseModel):
     complaint_id: int
 
+class CommentModel(BaseModel):
+    complaint_id: int
+    content: str
+
 def clean_text(text: str) -> str:
     if not text: return ""
     bad_words = ["시발", "씨발", "병신", "개새끼", "지랄", "fuck", "shit", "미친", "죽어"]
@@ -37,70 +41,67 @@ def clean_text(text: str) -> str:
     text = re.sub(phone_pattern, "010-****-****", text)
     return text
 
-# 불만 등록
+# 1. 불만 등록
 @app.post("/api/report")
 def create_complaint(data: Complaint):
     clean_brand = clean_text(data.brand)
     clean_product = clean_text(data.product)
     clean_issue = clean_text(data.issue)
-    
     try:
-        # 처음 등록할 때 count는 1로 시작
         response = supabase.table("complaints").insert({
-            "brand": clean_brand,
-            "product": clean_product,
-            "issue": clean_issue,
-            "count": 1 
+            "brand": clean_brand, "product": clean_product, "issue": clean_issue, "count": 1 
         }).execute()
         return {"message": "저장 성공", "data": response.data}
     except Exception as e:
-        print(f"❌ 저장 실패: {e}")
         return {"message": "저장 실패", "error": str(e)}
 
-# 🔥 [추가된 기능] 공감 투표 (IP 체크)
+# 2. 공감 투표
 @app.post("/api/vote")
 def vote_complaint(data: Vote, request: Request):
-    # 1. 사용자 IP 가져오기 (Render 같은 서버 뒤에 있을 때를 대비해 x-forwarded-for 확인)
     client_ip = request.headers.get('x-forwarded-for')
-    if not client_ip:
-        client_ip = request.client.host
-    
-    print(f"🔥 투표 시도: ID {data.complaint_id} / IP {client_ip}")
-
+    if not client_ip: client_ip = request.client.host
     try:
-        # 2. 이미 투표했는지 장부(votes) 뒤져보기
         check = supabase.table("votes").select("*").eq("complaint_id", data.complaint_id).eq("ip_address", client_ip).execute()
+        if check.data: return {"message": "ALREADY_VOTED"}
         
-        if check.data:
-            # 이미 기록이 있으면 거절!
-            return {"message": "ALREADY_VOTED"}
-
-        # 3. 투표 안 했으면 -> 장부에 기록하고, 카운트 +1
-        # (1) 기록 남기기
-        supabase.table("votes").insert({
-            "complaint_id": data.complaint_id,
-            "ip_address": client_ip
-        }).execute()
-
-        # (2) 카운트 증가시키기 (기존 글 불러와서 +1 업데이트)
-        # 현재 카운트 가져오기
+        supabase.table("votes").insert({"complaint_id": data.complaint_id, "ip_address": client_ip}).execute()
+        
         current_data = supabase.table("complaints").select("count").eq("id", data.complaint_id).execute()
         current_count = current_data.data[0]['count']
-        
-        # +1 해서 업데이트
         supabase.table("complaints").update({"count": current_count + 1}).eq("id", data.complaint_id).execute()
-
         return {"message": "SUCCESS"}
-
     except Exception as e:
-        print(f"❌ 투표 에러: {e}")
         return {"message": "ERROR", "error": str(e)}
 
+# 3. 목록 조회
 @app.get("/api/complaints")
 def get_complaints():
     try:
         response = supabase.table("complaints").select("*").execute()
         return response.data
     except Exception as e:
-        print(f"❌ 조회 실패: {e}")
+        return []
+
+# 🔥 [NEW] 4. 댓글 쓰기
+@app.post("/api/comments")
+def add_comment(data: CommentModel):
+    clean_content = clean_text(data.content) # 댓글도 욕설 필터링
+    try:
+        supabase.table("comments").insert({
+            "complaint_id": data.complaint_id,
+            "content": clean_content
+        }).execute()
+        return {"message": "SUCCESS"}
+    except Exception as e:
+        print(f"댓글 에러: {e}")
+        return {"message": "ERROR", "error": str(e)}
+
+# 🔥 [NEW] 5. 댓글 불러오기
+@app.get("/api/comments/{complaint_id}")
+def get_comments(complaint_id: int):
+    try:
+        # 최신순으로 정렬해서 가져오기
+        response = supabase.table("comments").select("*").eq("complaint_id", complaint_id).order("created_at", desc=True).execute()
+        return response.data
+    except Exception as e:
         return []
