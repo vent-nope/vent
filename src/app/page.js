@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Share2, Mail, Flame, ThumbsUp, Trophy, MessageSquare, Send, Search } from "lucide-react"; 
+import { Users, Share2, Mail, Flame, ThumbsUp, Trophy, MessageSquare, Send, Search, Trash2, Lock } from "lucide-react"; 
 import Link from "next/link"; 
 
 // ★ 사장님 Render 주소
@@ -10,7 +10,11 @@ const API_URL = "https://vent-fab0.onrender.com";
 export default function Home() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState(""); // 🔍 검색어 상태 추가
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // 🔐 관리자 모드 상태
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
 
   const fetchData = async () => {
     try {
@@ -24,6 +28,7 @@ export default function Home() {
         } else {
              if(item.count > stats[key].count) {
                  stats[key] = { ...item, count: item.count };
+                 stats[key].id = item.id;
              }
         }
       });
@@ -38,7 +43,40 @@ export default function Home() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // 🔍 검색 필터링 로직 (브랜드나 제품명에 검색어가 포함되면 보여줌)
+  // 🗑️ 삭제 함수
+  const handleDelete = async (id) => {
+    if (!confirm("정말 삭제하시겠습니까? (복구 불가)")) return;
+
+    try {
+        // 비밀번호를 주소 뒤에 달아서 보냄
+        const res = await fetch(`${API_URL}/api/complaints/${id}?password=${adminPassword}`, {
+            method: "DELETE"
+        });
+        const result = await res.json();
+
+        if (result.message === "SUCCESS") {
+            alert("삭제되었습니다.");
+            fetchData(); // 목록 새로고침
+        } else if (result.message === "WRONG_PASSWORD") {
+            alert("비밀번호가 틀렸습니다. 다시 로그인해주세요.");
+            setIsAdmin(false);
+        } else {
+            alert("삭제 실패: " + result.error);
+        }
+    } catch (err) {
+        alert("서버 오류");
+    }
+  };
+
+  // 🔐 관리자 로그인 처리
+  const handleAdminLogin = () => {
+      const pw = prompt("관리자 비밀번호를 입력하세요:");
+      if (pw) {
+          setAdminPassword(pw);
+          setIsAdmin(true); // 일단 관리자 모드 켜기 (실제 삭제할 때 검증함)
+      }
+  };
+
   const filteredComplaints = complaints.filter((item) => 
     item.brand.toLowerCase().includes(searchTerm.toLowerCase()) || 
     item.product.toLowerCase().includes(searchTerm.toLowerCase())
@@ -69,11 +107,10 @@ export default function Home() {
           우리의 목소리가 들리게 합시다.
         </p>
 
-        {/* 🔍 검색창 디자인 추가 */}
         <div className="relative max-w-md mx-auto">
             <input 
                 type="text"
-                placeholder="브랜드나 제품명을 검색해보세요 (예: 삼성, 던파)"
+                placeholder="브랜드나 제품명을 검색해보세요"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-white border-2 border-neutral-900 rounded-full py-3 pl-12 pr-4 font-bold focus:outline-none focus:ring-4 focus:ring-neutral-200 transition shadow-sm"
@@ -85,19 +122,40 @@ export default function Home() {
       <section className="max-w-2xl mx-auto px-4 pb-12 w-full flex-1 space-y-6">
         {filteredComplaints.length === 0 ? (
             <div className="text-center py-20 text-gray-400">
-                <p>검색 결과가 없습니다.<br/>직접 등록해보시는 건 어때요?</p>
+                <p>검색 결과가 없습니다.</p>
             </div>
         ) : (
             filteredComplaints.map((item, index) => (
-              <ComplaintCard key={item.id} item={item} index={index} fetchData={fetchData} />
+              <div key={item.id} className="relative">
+                  <ComplaintCard item={item} index={index} fetchData={fetchData} />
+                  
+                  {/* 🗑️ 관리자일 때만 보이는 삭제 버튼 */}
+                  {isAdmin && (
+                      <button 
+                        onClick={() => handleDelete(item.id)}
+                        className="absolute top-4 right-4 bg-red-600 text-white p-2 rounded-full shadow-lg hover:bg-red-700 z-10"
+                        title="관리자 권한으로 삭제"
+                      >
+                          <Trash2 className="w-4 h-4" />
+                      </button>
+                  )}
+              </div>
             ))
         )}
       </section>
+      
+      {/* 푸터에 관리자 로그인 버튼 숨기기 */}
+      <footer className="py-8 text-center text-gray-300 text-xs">
+          <p>© 2024 VENT. All rights reserved.</p>
+          <button onClick={handleAdminLogin} className="mt-2 hover:text-gray-500 transition">
+              <Lock className="w-3 h-3 inline-block mr-1" /> Admin
+          </button>
+      </footer>
     </main>
   );
 }
 
-// 🔥 카드 컴포넌트 (기존과 동일)
+// 🔥 카드 컴포넌트 (기존과 동일하지만, 삭제 버튼 위치 확보를 위해 살짝 수정할 필요 없음, 상위 div에서 처리함)
 function ComplaintCard({ item, index, fetchData }) {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);

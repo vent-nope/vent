@@ -105,3 +105,26 @@ def get_comments(complaint_id: int):
         return response.data
     except Exception as e:
         return []
+    # ... (위쪽 코드는 그대로 두세요) ...
+
+# 🔥 [NEW] 6. 관리자 삭제 기능 (비밀번호: vent1234)
+@app.delete("/api/complaints/{complaint_id}")
+def delete_complaint(complaint_id: int, password: str):
+    # ★ 사장님만의 비밀번호 설정 (원하는 걸로 바꾸셔도 됩니다)
+    ADMIN_PASSWORD = "vent1234"
+
+    if password != ADMIN_PASSWORD:
+        return {"message": "WRONG_PASSWORD"}
+
+    try:
+        # 1. 관련된 댓글과 투표 먼저 깔끔하게 지우기 (청소)
+        supabase.table("comments").delete().eq("complaint_id", complaint_id).execute()
+        supabase.table("votes").delete().eq("complaint_id", complaint_id).execute()
+
+        # 2. 진짜 불만 글 삭제
+        supabase.table("complaints").delete().eq("id", complaint_id).execute()
+
+        return {"message": "SUCCESS"}
+    except Exception as e:
+        print(f"삭제 에러: {e}")
+        return {"message": "ERROR", "error": str(e)}
