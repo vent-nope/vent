@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Share2, Mail, Flame, ThumbsUp, Trophy, MessageSquare, Send } from "lucide-react"; 
+import { Users, Share2, Mail, Flame, ThumbsUp, Trophy, MessageSquare, Send, Search } from "lucide-react"; 
 import Link from "next/link"; 
 
 // ★ 사장님 Render 주소
@@ -10,6 +10,7 @@ const API_URL = "https://vent-fab0.onrender.com";
 export default function Home() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState(""); // 🔍 검색어 상태 추가
 
   const fetchData = async () => {
     try {
@@ -37,6 +38,12 @@ export default function Home() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // 🔍 검색 필터링 로직 (브랜드나 제품명에 검색어가 포함되면 보여줌)
+  const filteredComplaints = complaints.filter((item) => 
+    item.brand.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    item.product.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900 font-sans flex flex-col">
       <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
@@ -57,28 +64,45 @@ export default function Home() {
           대한민국<br/>
           <span className="text-red-600 bg-red-50 px-2 rounded-lg">분노 랭킹</span>
         </h1>
-        <p className="text-gray-500 text-sm md:text-base">
+        <p className="text-gray-500 text-sm md:text-base mb-8">
           공감과 댓글로 화력을 모아주세요.<br/>
           우리의 목소리가 들리게 합시다.
         </p>
+
+        {/* 🔍 검색창 디자인 추가 */}
+        <div className="relative max-w-md mx-auto">
+            <input 
+                type="text"
+                placeholder="브랜드나 제품명을 검색해보세요 (예: 삼성, 던파)"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white border-2 border-neutral-900 rounded-full py-3 pl-12 pr-4 font-bold focus:outline-none focus:ring-4 focus:ring-neutral-200 transition shadow-sm"
+            />
+            <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+        </div>
       </section>
 
       <section className="max-w-2xl mx-auto px-4 pb-12 w-full flex-1 space-y-6">
-        {complaints.map((item, index) => (
-          <ComplaintCard key={item.id} item={item} index={index} fetchData={fetchData} />
-        ))}
+        {filteredComplaints.length === 0 ? (
+            <div className="text-center py-20 text-gray-400">
+                <p>검색 결과가 없습니다.<br/>직접 등록해보시는 건 어때요?</p>
+            </div>
+        ) : (
+            filteredComplaints.map((item, index) => (
+              <ComplaintCard key={item.id} item={item} index={index} fetchData={fetchData} />
+            ))
+        )}
       </section>
     </main>
   );
 }
 
-// 🔥 카드 컴포넌트 (댓글 기능을 위해 분리함)
+// 🔥 카드 컴포넌트 (기존과 동일)
 function ComplaintCard({ item, index, fetchData }) {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   
-  // 진화 단계 계산
   const getEvolutionStage = (count) => {
     if (count < 10) return { icon: "🐟", name: "송사리", next: 10 };
     if (count < 50) return { icon: "🐡", name: "복어", next: 50 };
@@ -92,7 +116,6 @@ function ComplaintCard({ item, index, fetchData }) {
   const evo = getEvolutionStage(item.count);
   const percent = Math.min((item.count / evo.next) * 100, 100);
 
-  // 랭킹 스타일
   let cardStyle = "bg-white border-gray-200";
   let rankBadge = null;
   if (index === 0) {
@@ -106,7 +129,6 @@ function ComplaintCard({ item, index, fetchData }) {
     rankBadge = <span className="bg-orange-400 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">🥉 3위</span>;
   }
 
-  // 댓글 불러오기
   const fetchComments = async () => {
     try {
       const res = await fetch(`${API_URL}/api/comments/${item.id}`);
@@ -115,13 +137,11 @@ function ComplaintCard({ item, index, fetchData }) {
     } catch (err) { console.error(err); }
   };
 
-  // 댓글창 열기/닫기
   const toggleComments = () => {
     if (!showComments) fetchComments();
     setShowComments(!showComments);
   };
 
-  // 댓글 등록
   const submitComment = async () => {
     if (!newComment.trim()) return;
     try {
@@ -132,7 +152,7 @@ function ComplaintCard({ item, index, fetchData }) {
       });
       if (res.ok) {
         setNewComment("");
-        fetchComments(); // 목록 갱신
+        fetchComments(); 
       } else { alert("오류 발생"); }
     } catch (err) { alert("서버 오류"); }
   };
@@ -200,7 +220,6 @@ function ComplaintCard({ item, index, fetchData }) {
         </button>
       </div>
 
-      {/* 댓글창 영역 (버튼 누르면 열림) */}
       {showComments && (
         <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 -mx-6 px-6 pb-2">
             <div className="flex gap-2 mb-4">
