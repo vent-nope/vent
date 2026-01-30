@@ -2,27 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, ArrowLeft } from "lucide-react"; // 아이콘 추가
+import { Camera, ArrowLeft } from "lucide-react"; 
 
 export default function Report() {
   const [brand, setBrand] = useState("");
   const [product, setProduct] = useState("");
   const [issue, setIssue] = useState("");
-  const [image, setImage] = useState(null); // 📸 사진 담을 변수
-  const [preview, setPreview] = useState(null); // 미리보기 URL
+  const [image, setImage] = useState(null); 
+  const [preview, setPreview] = useState(null); 
   const [loading, setLoading] = useState(false);
   
   const router = useRouter();
   
-  // ★ 사장님의 Render 주소
+  // ★ 사장님의 Render 주소 (확인 필수!)
   const API_URL = "https://vent-fab0.onrender.com";
 
-  // 사진 파일 선택했을 때 실행되는 함수
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setImage(file);
-      setPreview(URL.createObjectURL(file)); // 미리보기 생성
+      setPreview(URL.createObjectURL(file)); 
     }
   };
 
@@ -33,18 +32,17 @@ export default function Report() {
     setLoading(true);
 
     try {
-      // 📦 사진은 JSON이 아니라 'FormData'라는 택배 상자에 담아야 함
       const formData = new FormData();
       formData.append("brand", brand);
       formData.append("product", product);
       formData.append("issue", issue);
       if (image) {
-        formData.append("image", image); // 사진 넣기
+        formData.append("image", image); 
       }
 
       const res = await fetch(`${API_URL}/api/report`, {
         method: "POST",
-        body: formData, // 상자째로 보냄 (헤더 설정 불필요)
+        body: formData, 
       });
 
       const result = await res.json();
@@ -65,7 +63,6 @@ export default function Report() {
 
   return (
     <main className="min-h-screen bg-white text-neutral-900 font-sans">
-      {/* 상단 네비게이션 */}
       <nav className="border-b border-gray-100 p-4 sticky top-0 bg-white z-10">
         <div className="max-w-xl mx-auto flex items-center gap-4">
             <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition">
@@ -77,43 +74,40 @@ export default function Report() {
 
       <div className="max-w-xl mx-auto p-6">
         <div className="space-y-6">
-            {/* 1. 브랜드 입력 */}
             <div>
                 <label className="block text-sm font-bold text-gray-500 mb-2">어떤 브랜드인가요?</label>
                 <input 
                     type="text" 
-                    placeholder="예: 삼성전자, 넥슨, 현대자동차" 
+                    placeholder="예: 삼성전자, 넥슨" 
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
                     className="w-full border-2 border-gray-200 rounded-xl p-4 font-bold text-lg focus:outline-none focus:border-neutral-900 transition"
                 />
             </div>
 
-            {/* 2. 제품명 입력 */}
             <div>
-                <label className="block text-sm font-bold text-gray-500 mb-2">문제의 제품/서비스명</label>
+                <label className="block text-sm font-bold text-gray-500 mb-2">제품명</label>
                 <input 
                     type="text" 
-                    placeholder="예: 갤럭시 S24, 메이플스토리, 그랜저" 
+                    placeholder="예: 갤럭시 S24, 메이플스토리" 
                     value={product}
                     onChange={(e) => setProduct(e.target.value)}
                     className="w-full border-2 border-gray-200 rounded-xl p-4 font-bold text-lg focus:outline-none focus:border-neutral-900 transition"
                 />
             </div>
 
-            {/* 3. 불만 내용 입력 */}
             <div>
-                <label className="block text-sm font-bold text-gray-500 mb-2">무엇이 문제인가요?</label>
+                <label className="block text-sm font-bold text-gray-500 mb-2">불만 내용</label>
                 <textarea 
                     rows="4"
-                    placeholder="구체적인 피해 내용이나 불만을 적어주세요." 
+                    placeholder="구체적인 내용을 적어주세요." 
                     value={issue}
                     onChange={(e) => setIssue(e.target.value)}
                     className="w-full border-2 border-gray-200 rounded-xl p-4 text-base focus:outline-none focus:border-neutral-900 transition resize-none"
                 />
             </div>
 
-            {/* 📸 4. 사진 업로드 버튼 */}
+            {/* 📸 여기가 핵심! 사진 업로드 버튼 */}
             <div>
                 <label className="block text-sm font-bold text-gray-500 mb-2">증거 사진 (선택)</label>
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition overflow-hidden">
@@ -129,11 +123,10 @@ export default function Report() {
                 </label>
             </div>
 
-            {/* 제출 버튼 */}
             <button 
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full bg-red-600 text-white font-black text-lg py-5 rounded-2xl hover:bg-red-700 transition shadow-lg shadow-red-200 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                className="w-full bg-red-600 text-white font-black text-lg py-5 rounded-2xl hover:bg-red-700 transition shadow-lg shadow-red-200 disabled:opacity-50 mt-4"
             >
                 {loading ? "등록 중..." : "🔥 화력 지원 요청하기"}
             </button>
