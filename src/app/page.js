@@ -11,8 +11,6 @@ export default function Home() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // 🔐 관리자 모드 상태
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
 
@@ -20,14 +18,23 @@ export default function Home() {
     try {
       const res = await fetch(`${API_URL}/api/complaints`);
       const data = await res.json();
+      
+      // 중복 제거 및 최신 데이터 병합 로직
       const stats = {};
       data.forEach(item => {
         const key = item.product.trim().toUpperCase(); 
+        // 같은 제품이라도 사진이 있는 최신 글을 우선해서 보여주거나, 가장 count가 높은 걸 대표로 씀
         if (!stats[key]) {
           stats[key] = { ...item, product: item.product.trim() };
         } else {
+             // 기존 것보다 카운트가 크면 교체
              if(item.count > stats[key].count) {
                  stats[key] = { ...item, count: item.count };
+             }
+             // 만약 기존 것에 사진이 없는데, 새 것에 사진이 있다면? 사진 있는 걸로 교체 (보는 재미를 위해)
+             if(!stats[key].image_url && item.image_url) {
+                 stats[key].image_url = item.image_url;
+                 stats[key].issue = item.issue; // 내용도 사진 쪽 걸로
                  stats[key].id = item.id;
              }
         }
@@ -43,38 +50,20 @@ export default function Home() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // 🗑️ 삭제 함수
   const handleDelete = async (id) => {
     if (!confirm("정말 삭제하시겠습니까? (복구 불가)")) return;
-
     try {
-        // 비밀번호를 주소 뒤에 달아서 보냄
-        const res = await fetch(`${API_URL}/api/complaints/${id}?password=${adminPassword}`, {
-            method: "DELETE"
-        });
+        const res = await fetch(`${API_URL}/api/complaints/${id}?password=${adminPassword}`, { method: "DELETE" });
         const result = await res.json();
-
-        if (result.message === "SUCCESS") {
-            alert("삭제되었습니다.");
-            fetchData(); // 목록 새로고침
-        } else if (result.message === "WRONG_PASSWORD") {
-            alert("비밀번호가 틀렸습니다. 다시 로그인해주세요.");
-            setIsAdmin(false);
-        } else {
-            alert("삭제 실패: " + result.error);
-        }
-    } catch (err) {
-        alert("서버 오류");
-    }
+        if (result.message === "SUCCESS") { alert("삭제되었습니다."); fetchData(); }
+        else if (result.message === "WRONG_PASSWORD") { alert("비밀번호 오류"); setIsAdmin(false); }
+        else { alert("실패: " + result.error); }
+    } catch (err) { alert("오류"); }
   };
 
-  // 🔐 관리자 로그인 처리
   const handleAdminLogin = () => {
-      const pw = prompt("관리자 비밀번호를 입력하세요:");
-      if (pw) {
-          setAdminPassword(pw);
-          setIsAdmin(true); // 일단 관리자 모드 켜기 (실제 삭제할 때 검증함)
-      }
+      const pw = prompt("관리자 비밀번호:");
+      if (pw) { setAdminPassword(pw); setIsAdmin(true); }
   };
 
   const filteredComplaints = complaints.filter((item) => 
@@ -103,7 +92,7 @@ export default function Home() {
           <span className="text-red-600 bg-red-50 px-2 rounded-lg">분노 랭킹</span>
         </h1>
         <p className="text-gray-500 text-sm md:text-base mb-8">
-          공감과 댓글로 화력을 모아주세요.<br/>
+          증거 사진으로 화력을 더하세요.<br/>
           우리의 목소리가 들리게 합시다.
         </p>
 
@@ -121,21 +110,13 @@ export default function Home() {
 
       <section className="max-w-2xl mx-auto px-4 pb-12 w-full flex-1 space-y-6">
         {filteredComplaints.length === 0 ? (
-            <div className="text-center py-20 text-gray-400">
-                <p>검색 결과가 없습니다.</p>
-            </div>
+            <div className="text-center py-20 text-gray-400"><p>등록된 이슈가 없습니다.</p></div>
         ) : (
             filteredComplaints.map((item, index) => (
               <div key={item.id} className="relative">
                   <ComplaintCard item={item} index={index} fetchData={fetchData} />
-                  
-                  {/* 🗑️ 관리자일 때만 보이는 삭제 버튼 */}
                   {isAdmin && (
-                      <button 
-                        onClick={() => handleDelete(item.id)}
-                        className="absolute top-4 right-4 bg-red-600 text-white p-2 rounded-full shadow-lg hover:bg-red-700 z-10"
-                        title="관리자 권한으로 삭제"
-                      >
+                      <button onClick={() => handleDelete(item.id)} className="absolute top-4 right-4 bg-red-600 text-white p-2 rounded-full shadow-lg hover:bg-red-700 z-10">
                           <Trash2 className="w-4 h-4" />
                       </button>
                   )}
@@ -144,18 +125,14 @@ export default function Home() {
         )}
       </section>
       
-      {/* 푸터에 관리자 로그인 버튼 숨기기 */}
       <footer className="py-8 text-center text-gray-300 text-xs">
           <p>© 2024 VENT. All rights reserved.</p>
-          <button onClick={handleAdminLogin} className="mt-2 hover:text-gray-500 transition">
-              <Lock className="w-3 h-3 inline-block mr-1" /> Admin
-          </button>
+          <button onClick={handleAdminLogin} className="mt-2 hover:text-gray-500 transition"><Lock className="w-3 h-3 inline-block mr-1" /> Admin</button>
       </footer>
     </main>
   );
 }
 
-// 🔥 카드 컴포넌트 (기존과 동일하지만, 삭제 버튼 위치 확보를 위해 살짝 수정할 필요 없음, 상위 div에서 처리함)
 function ComplaintCard({ item, index, fetchData }) {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
@@ -195,24 +172,17 @@ function ComplaintCard({ item, index, fetchData }) {
     } catch (err) { console.error(err); }
   };
 
-  const toggleComments = () => {
-    if (!showComments) fetchComments();
-    setShowComments(!showComments);
-  };
+  const toggleComments = () => { if (!showComments) fetchComments(); setShowComments(!showComments); };
 
   const submitComment = async () => {
     if (!newComment.trim()) return;
     try {
       const res = await fetch(`${API_URL}/api/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ complaint_id: item.id, content: newComment })
       });
-      if (res.ok) {
-        setNewComment("");
-        fetchComments(); 
-      } else { alert("오류 발생"); }
-    } catch (err) { alert("서버 오류"); }
+      if (res.ok) { setNewComment(""); fetchComments(); }
+    } catch (err) {}
   };
 
   const handleVote = async () => {
@@ -224,7 +194,7 @@ function ComplaintCard({ item, index, fetchData }) {
         const result = await res.json();
         if (result.message === "SUCCESS") { alert("🔥 화력 보태기 성공!"); fetchData(); }
         else if (result.message === "ALREADY_VOTED") { alert("✋ 이미 공감하셨습니다."); }
-    } catch (error) { alert("통신 오류"); }
+    } catch (error) {}
   };
 
   const handleShare = async () => {
@@ -240,25 +210,37 @@ function ComplaintCard({ item, index, fetchData }) {
     <div className={`border rounded-2xl p-6 transition-all duration-300 ${cardStyle} hover:scale-[1.01]`}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-4">
-          <div className="relative w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-gray-100">
+          <div className="relative w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-gray-100 shrink-0">
             {evo.icon}
             {index === 0 && <div className="absolute -top-3 -right-3 animate-bounce">👑</div>}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex gap-2 mb-1">
                 {rankBadge}
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider border border-gray-200 px-1.5 py-0.5 rounded bg-white">{item.brand}</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider border border-gray-200 px-1.5 py-0.5 rounded bg-white truncate">{item.brand}</span>
             </div>
-            <h3 className="text-lg font-bold leading-tight">{item.product}</h3>
+            <h3 className="text-lg font-bold leading-tight break-keep">{item.product}</h3>
             <div className="flex items-center gap-1 mt-1">
                 <span className="text-xs font-bold text-red-600">{evo.name}</span>
             </div>
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right shrink-0">
           <span className="text-2xl font-black text-neutral-900 block">{item.count}</span>
         </div>
       </div>
+
+      {/* 📸 사진이 있으면 여기에 뜸! */}
+      {item.image_url && (
+          <div className="mb-4 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+              <img src={item.image_url} alt="증거 사진" className="w-full h-auto object-cover max-h-96" />
+          </div>
+      )}
+
+      {/* 내용 */}
+      <p className="text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg leading-relaxed whitespace-pre-wrap">
+          {item.issue}
+      </p>
 
       <div className="mb-5">
         <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
@@ -273,40 +255,4 @@ function ComplaintCard({ item, index, fetchData }) {
         <button onClick={toggleComments} className="flex-1 bg-gray-50 text-gray-600 hover:bg-gray-100 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition">
           <MessageSquare className="w-4 h-4" /> 댓글
         </button>
-        <button onClick={handleShare} className="w-12 bg-neutral-900 text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95">
-          <Share2 className="w-4 h-4" />
-        </button>
-      </div>
-
-      {showComments && (
-        <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 -mx-6 px-6 pb-2">
-            <div className="flex gap-2 mb-4">
-                <input 
-                    type="text" 
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && submitComment()}
-                    placeholder="의견을 남겨주세요 (욕설 금지)"
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-neutral-900"
-                />
-                <button onClick={submitComment} className="bg-neutral-900 text-white px-3 rounded-lg hover:bg-neutral-700">
-                    <Send className="w-4 h-4" />
-                </button>
-            </div>
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-                {comments.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-2">아직 댓글이 없습니다. 첫 번째로 남겨보세요!</p>
-                ) : (
-                    comments.map((cmt) => (
-                        <div key={cmt.id} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm text-sm">
-                            <p className="text-gray-800">{cmt.content}</p>
-                            <span className="text-[10px] text-gray-400 mt-1 block">{new Date(cmt.created_at).toLocaleDateString()}</span>
-                        </div>
-                    ))
-                )}
-            </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        <button onClick={handleShare} className="w-12 bg

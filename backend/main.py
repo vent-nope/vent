@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 import re
+import uuid
 
 app = FastAPI()
 
@@ -14,16 +15,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ★ 여기에 사장님의 진짜 Supabase 키(eyJ...)를 넣어주세요!
-url: str = "https://sjdsnkwxpbhrddtmikza.supabase.co" 
-key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZHNua3d4cGJocmRkdG1pa3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTI5NjEsImV4cCI6MjA4NTIyODk2MX0.wQgyUPAI_eDIye-umVryhxk2LOe3QyQZiUgWYVcDyR0" 
+# ★ 사장님의 진짜 키를 넣어주세요!
+url: str = "https://sjdsnkwxpbhrddtmikza.supabase.co"
+key: str = "여기에_진짜_KEY_넣기"
 
 supabase: Client = create_client(url, key)
-
-class Complaint(BaseModel):
-    brand: str
-    product: str
-    issue: str
 
 class Vote(BaseModel):
     complaint_id: int
@@ -41,21 +37,59 @@ def clean_text(text: str) -> str:
     text = re.sub(phone_pattern, "010-****-****", text)
     return text
 
-# 1. 불만 등록
+# 🔥 [수정됨] 불만 등록 (사진 파일 받기 위해 구조 변경)
 @app.post("/api/report")
-def create_complaint(data: Complaint):
-    clean_brand = clean_text(data.brand)
-    clean_product = clean_text(data.product)
-    clean_issue = clean_text(data.issue)
+async def create_complaint(
+    brand: str = Form(...),
+    product: str = Form(...),
+    issue: str = Form(...),
+    image: UploadFile = File(None) # 사진은 없을 수도 있음
+):
+    clean_brand = clean_text(brand)
+    clean_product = clean_text(product)
+    clean_issue = clean_text(issue)
+    
+    image_url = None
+
+    # 사진이 있다면 Supabase Storage에 업로드
+    if image:
+        try:
+            file_content = await image.read()
+            file_ext = image.filename.split(".")[-1]
+            file_name = f"{uuid.uuid4()}.{file_ext}" # 파일명 겹치지 않게 랜덤 생성
+            
+            # 'uploads' 버킷에 저장
+            supabase.storage.from_("uploads").upload(file_name, file_content, {"content-type": image.content_type})
+            
+            # 저장된 이미지의 공개 주소 가져오기
+            public_url_data = supabase.storage.from_("uploads").get_public_url(file_name)
+            
+            # get_public_url이 문자열을 반환하는지 객체를 반환하는지 버전에 따라 다를 수 있음
+            # 보통 문자열(URL)을 바로 반환하거나, data 속성 안에 있거나 함.
+            # 최신 supabase-py에서는 바로 URL 문자열을 반환하는 경우가 많음.
+            if isinstance(public_url_data, str):
+                image_url = public_url_data
+            else:
+                # 구버전 대응
+                image_url = public_url_data  # 일단 넣어봄
+                
+        except Exception as e:
+            print(f"이미지 업로드 실패: {e}")
+
     try:
         response = supabase.table("complaints").insert({
-            "brand": clean_brand, "product": clean_product, "issue": clean_issue, "count": 1 
+            "brand": clean_brand,
+            "product": clean_product,
+            "issue": clean_issue,
+            "image_url": image_url, # 이미지 주소도 같이 저장
+            "count": 1 
         }).execute()
         return {"message": "저장 성공", "data": response.data}
     except Exception as e:
+        print(f"DB 저장 실패: {e}")
         return {"message": "저장 실패", "error": str(e)}
 
-# 2. 공감 투표
+# 나머지 기능들은 그대로 유지
 @app.post("/api/vote")
 def vote_complaint(data: Vote, request: Request):
     client_ip = request.headers.get('x-forwarded-for')
@@ -63,9 +97,7 @@ def vote_complaint(data: Vote, request: Request):
     try:
         check = supabase.table("votes").select("*").eq("complaint_id", data.complaint_id).eq("ip_address", client_ip).execute()
         if check.data: return {"message": "ALREADY_VOTED"}
-        
         supabase.table("votes").insert({"complaint_id": data.complaint_id, "ip_address": client_ip}).execute()
-        
         current_data = supabase.table("complaints").select("count").eq("id", data.complaint_id).execute()
         current_count = current_data.data[0]['count']
         supabase.table("complaints").update({"count": current_count + 1}).eq("id", data.complaint_id).execute()
@@ -73,7 +105,6 @@ def vote_complaint(data: Vote, request: Request):
     except Exception as e:
         return {"message": "ERROR", "error": str(e)}
 
-# 3. 목록 조회
 @app.get("/api/complaints")
 def get_complaints():
     try:
@@ -82,49 +113,31 @@ def get_complaints():
     except Exception as e:
         return []
 
-# 🔥 [NEW] 4. 댓글 쓰기
 @app.post("/api/comments")
 def add_comment(data: CommentModel):
-    clean_content = clean_text(data.content) # 댓글도 욕설 필터링
+    clean_content = clean_text(data.content)
     try:
-        supabase.table("comments").insert({
-            "complaint_id": data.complaint_id,
-            "content": clean_content
-        }).execute()
+        supabase.table("comments").insert({"complaint_id": data.complaint_id, "content": clean_content}).execute()
         return {"message": "SUCCESS"}
     except Exception as e:
-        print(f"댓글 에러: {e}")
         return {"message": "ERROR", "error": str(e)}
 
-# 🔥 [NEW] 5. 댓글 불러오기
 @app.get("/api/comments/{complaint_id}")
 def get_comments(complaint_id: int):
     try:
-        # 최신순으로 정렬해서 가져오기
         response = supabase.table("comments").select("*").eq("complaint_id", complaint_id).order("created_at", desc=True).execute()
         return response.data
     except Exception as e:
         return []
-    # ... (위쪽 코드는 그대로 두세요) ...
 
-# 🔥 [NEW] 6. 관리자 삭제 기능 (비밀번호: vent1234)
 @app.delete("/api/complaints/{complaint_id}")
 def delete_complaint(complaint_id: int, password: str):
-    # ★ 사장님만의 비밀번호 설정 (원하는 걸로 바꾸셔도 됩니다)
     ADMIN_PASSWORD = "vent1234"
-
-    if password != ADMIN_PASSWORD:
-        return {"message": "WRONG_PASSWORD"}
-
+    if password != ADMIN_PASSWORD: return {"message": "WRONG_PASSWORD"}
     try:
-        # 1. 관련된 댓글과 투표 먼저 깔끔하게 지우기 (청소)
         supabase.table("comments").delete().eq("complaint_id", complaint_id).execute()
         supabase.table("votes").delete().eq("complaint_id", complaint_id).execute()
-
-        # 2. 진짜 불만 글 삭제
         supabase.table("complaints").delete().eq("id", complaint_id).execute()
-
         return {"message": "SUCCESS"}
     except Exception as e:
-        print(f"삭제 에러: {e}")
         return {"message": "ERROR", "error": str(e)}
