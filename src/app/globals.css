@@ -12,11 +12,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* 👇 [수정됨] 범인을 잡았습니다! 
+   원래 @media ... 였던 부분을 .dark 로 바꿨습니다.
+   이제 컴퓨터 설정이 아니라, 사장님이 버튼을 눌러서 'dark' 클래스가 생길 때만 변합니다. */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {
