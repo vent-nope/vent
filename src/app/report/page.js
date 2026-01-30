@@ -14,7 +14,7 @@ export default function Report() {
   
   const router = useRouter();
   
-  // ★ 사장님의 Render 주소 (확인 필수!)
+  // ★ 사장님의 Render 주소
   const API_URL = "https://vent-fab0.onrender.com";
 
   const handleImageChange = (e) => {
@@ -62,59 +62,62 @@ export default function Report() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-neutral-900 font-sans">
-      <nav className="border-b border-gray-100 p-4 sticky top-0 bg-white z-10">
+    // 👇 [핵심] 배경색: 흰색 -> (다크모드) 어두운 회색
+    <main className="min-h-screen bg-white dark:bg-gray-900 text-neutral-900 dark:text-gray-100 font-sans transition-colors duration-300">
+      
+      {/* 네비게이션: 흰색 -> (다크모드) 어두운 회색 */}
+      <nav className="border-b border-gray-100 dark:border-gray-800 p-4 sticky top-0 bg-white dark:bg-gray-900 z-10 transition-colors duration-300">
         <div className="max-w-xl mx-auto flex items-center gap-4">
-            <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition">
+            <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition text-gray-600 dark:text-gray-300">
                 <ArrowLeft className="w-6 h-6" />
             </button>
-            <h1 className="font-bold text-lg">이슈 제보하기</h1>
+            <h1 className="font-bold text-lg dark:text-white">이슈 제보하기</h1>
         </div>
       </nav>
 
       <div className="max-w-xl mx-auto p-6">
         <div className="space-y-6">
             <div>
-                <label className="block text-sm font-bold text-gray-500 mb-2">어떤 브랜드인가요?</label>
+                <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">어떤 브랜드인가요?</label>
                 <input 
                     type="text" 
                     placeholder="예: 삼성전자, 넥슨" 
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-4 font-bold text-lg focus:outline-none focus:border-neutral-900 transition"
+                    // 👇 입력창: 흰색 -> (다크모드) 더 어두운 회색
+                    className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 font-bold text-lg focus:outline-none focus:border-neutral-900 dark:focus:border-gray-400 transition dark:text-white"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-bold text-gray-500 mb-2">제품명</label>
+                <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">제품명</label>
                 <input 
                     type="text" 
                     placeholder="예: 갤럭시 S24, 메이플스토리" 
                     value={product}
                     onChange={(e) => setProduct(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-4 font-bold text-lg focus:outline-none focus:border-neutral-900 transition"
+                    className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 font-bold text-lg focus:outline-none focus:border-neutral-900 dark:focus:border-gray-400 transition dark:text-white"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-bold text-gray-500 mb-2">불만 내용</label>
+                <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">불만 내용</label>
                 <textarea 
                     rows="4"
                     placeholder="구체적인 내용을 적어주세요." 
                     value={issue}
                     onChange={(e) => setIssue(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-4 text-base focus:outline-none focus:border-neutral-900 transition resize-none"
+                    className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 text-base focus:outline-none focus:border-neutral-900 dark:focus:border-gray-400 transition resize-none dark:text-white"
                 />
             </div>
 
-            {/* 📸 여기가 핵심! 사진 업로드 버튼 */}
             <div>
-                <label className="block text-sm font-bold text-gray-500 mb-2">증거 사진 (선택)</label>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition overflow-hidden">
+                <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">증거 사진 (선택)</label>
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition overflow-hidden bg-white dark:bg-gray-800/50">
                     {preview ? (
                         <img src={preview} alt="미리보기" className="h-full object-cover" />
                     ) : (
-                        <div className="flex flex-col items-center text-gray-400">
+                        <div className="flex flex-col items-center text-gray-400 dark:text-gray-500">
                             <Camera className="w-8 h-8 mb-1" />
                             <span className="text-xs">클릭해서 사진 첨부</span>
                         </div>
@@ -126,7 +129,7 @@ export default function Report() {
             <button 
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full bg-red-600 text-white font-black text-lg py-5 rounded-2xl hover:bg-red-700 transition shadow-lg shadow-red-200 disabled:opacity-50 mt-4"
+                className="w-full bg-red-600 text-white font-black text-lg py-5 rounded-2xl hover:bg-red-700 transition shadow-lg shadow-red-200 dark:shadow-none disabled:opacity-50 mt-4"
             >
                 {loading ? "등록 중..." : "🔥 화력 지원 요청하기"}
             </button>

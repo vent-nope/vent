@@ -1,8 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: 'class', // 👈 "버튼으로만 바꿀 거야"라고 선언
+  // 👇 여기가 핵심! 'selector'라고 적어야 최신 버전에서 버튼이 먹힙니다.
+  darkMode: 'selector', 
   content: [
-    "./src/**/*.{js,ts,jsx,tsx,mdx}", // 👈 경로를 좀 더 넓게 잡아서 확실하게 인식시킵니다
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {},
