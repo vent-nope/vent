@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Share2, Mail, Flame, ThumbsUp, Trophy, MessageSquare, Send, Search, Trash2, Lock, Moon, Sun } from "lucide-react"; 
+// 👇 [수정됨] 사용하지 않는 아이콘들은 다 뺐습니다! (에러 원인 제거)
+import { Share2, ThumbsUp, MessageSquare, Send, Search, Trash2, Lock, Moon, Sun } from "lucide-react"; 
 import Link from "next/link"; 
 
 const API_URL = "https://vent-fab0.onrender.com";
@@ -12,8 +13,6 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
-  
-  // 🌙 다크 모드 상태
   const [darkMode, setDarkMode] = useState(false);
 
   const toggleDarkMode = () => {
@@ -39,7 +38,6 @@ export default function Home() {
              if(item.count > stats[key].count) {
                  stats[key] = { ...item, count: item.count };
              }
-             // 사진 있는 걸 우선적으로 표시
              if(!stats[key].image_url && item.image_url) {
                  stats[key].image_url = item.image_url;
                  stats[key].issue = item.issue;
@@ -88,7 +86,6 @@ export default function Home() {
             </span>
           
           <div className="flex items-center gap-3">
-            {/* 🌙 다크 모드 버튼 */}
             <button 
                 onClick={toggleDarkMode}
                 className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-600 dark:text-gray-300"
@@ -244,7 +241,6 @@ function ComplaintCard({ item, index, fetchData }) {
         </div>
       </div>
 
-      {/* 📸 사진이 있으면 여기에 뜸! */}
       {item.image_url && (
           <div className="mb-4 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm">
               <img src={item.image_url} alt="증거 사진" className="w-full h-auto object-cover max-h-96" />
