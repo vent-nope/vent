@@ -1,19 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Share2, Mail, Flame, ThumbsUp } from "lucide-react"; 
+import { Users, Share2, Mail, Flame, ThumbsUp, Trophy, Medal } from "lucide-react"; 
 import Link from "next/link"; 
 
 export default function Home() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ★ [수정됨] 사장님의 진짜 Render 주소로 교체했습니다!
+  // ★ 사장님의 Render 주소 (수정할 필요 없음)
   const API_URL = "https://vent-fab0.onrender.com";
 
   const fetchData = async () => {
     try {
-      // 1. 목록 가져오기 주소 수정완료
       const res = await fetch(`${API_URL}/api/complaints`);
       const data = await res.json();
       
@@ -37,6 +36,7 @@ export default function Home() {
         }
       });
 
+      // 카운트 높은 순서대로 정렬 (랭킹 산정)
       const sortedList = Object.values(stats).sort((a, b) => b.count - a.count);
       
       if (sortedList.length === 0) {
@@ -80,10 +80,8 @@ export default function Home() {
     } catch (err) {}
   };
 
-  // 🔥 공감 투표 함수
   const handleVote = async (id) => {
       try {
-          // 2. 투표 주소 수정완료 (중복된 /api/complaints 제거함)
           const res = await fetch(`${API_URL}/api/vote`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -93,7 +91,7 @@ export default function Home() {
           const result = await res.json();
           
           if (result.message === "SUCCESS") {
-              alert("🔥 화력 보태기 성공! (진화에 한 걸음 다가갔습니다)");
+              alert("🔥 화력 보태기 성공! (랭킹이 올라갑니다!)");
               fetchData(); 
           } else if (result.message === "ALREADY_VOTED") {
               alert("✋ 이미 공감하셨습니다. (1인 1회)");
@@ -123,12 +121,12 @@ export default function Home() {
 
       <section className="py-12 px-6 max-w-2xl mx-auto text-center">
         <h1 className="text-4xl font-extrabold mb-3 leading-tight">
-          우리의 분노는<br/>
-          <span className="text-red-600 bg-red-50 px-2 rounded-lg">진화합니다.</span>
+          대한민국<br/>
+          <span className="text-red-600 bg-red-50 px-2 rounded-lg">분노 랭킹</span>
         </h1>
         <p className="text-gray-500 text-sm md:text-base">
-          혼자만의 일이 아닙니다.<br/>
-          버튼을 눌러 이슈를 진화시키세요.
+          가장 많은 공감을 받은 이슈가<br/>
+          세상을 바꿀 확률이 높습니다.
         </p>
       </section>
 
@@ -137,26 +135,51 @@ export default function Home() {
           const evo = getEvolutionStage(item.count);
           const percent = Math.min((item.count / evo.next) * 100, 100);
 
+          // 🏆 랭킹 스타일 적용 로직
+          let rankBadge = null;
+          let cardStyle = "bg-white border-gray-200"; // 기본 스타일
+          let rankIcon = null;
+
+          if (index === 0) { // 1등
+            cardStyle = "bg-yellow-50 border-yellow-400 shadow-yellow-200 shadow-lg ring-1 ring-yellow-400";
+            rankBadge = <span className="bg-yellow-400 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">👑 현재 1위</span>;
+            rankIcon = <Trophy className="w-5 h-5 text-yellow-600 mb-1" />;
+          } else if (index === 1) { // 2등
+            cardStyle = "bg-slate-50 border-slate-300 shadow-md";
+            rankBadge = <span className="bg-slate-400 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">🥈 2위</span>;
+          } else if (index === 2) { // 3등
+            cardStyle = "bg-orange-50 border-orange-200 shadow-md";
+            rankBadge = <span className="bg-orange-400 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">🥉 3위</span>;
+          }
+
           return (
-            <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300">
+            <div key={index} className={`border rounded-2xl p-6 transition-all duration-300 ${cardStyle} hover:scale-[1.01]`}>
               
               <div className="flex justify-between items-start mb-4">
                 <div className="flex gap-4">
-                  <div className="w-14 h-14 bg-neutral-100 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-neutral-200">
+                  {/* 진화 아이콘 */}
+                  <div className="relative w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-gray-100">
                     {evo.icon}
+                    {/* 1등일 경우 왕관 씌우기 */}
+                    {index === 0 && <div className="absolute -top-3 -right-3 text-2xl animate-bounce">👑</div>}
                   </div>
+                  
                   <div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider border border-gray-200 px-1.5 py-0.5 rounded">{item.brand}</span>
-                    <h3 className="text-lg font-bold mt-1 leading-tight">{item.product}</h3>
+                    <div className="flex gap-2 mb-1">
+                        {rankBadge}
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider border border-gray-200 px-1.5 py-0.5 rounded bg-white">{item.brand}</span>
+                    </div>
+                    <h3 className="text-lg font-bold leading-tight">{item.product}</h3>
                     <div className="flex items-center gap-1 mt-1">
                         <span className="text-xs font-bold text-red-600">{evo.name}</span>
                         <span className="text-[10px] text-gray-400">({evo.desc})</span>
                     </div>
                   </div>
                 </div>
+
                 <div className="text-right">
-                  <span className="text-2xl font-black text-neutral-900">{item.count}</span>
-                  <span className="text-xs text-gray-400 block font-bold">참여</span>
+                  {rankIcon}
+                  <span className="text-2xl font-black text-neutral-900 block">{item.count}</span>
                 </div>
               </div>
 
@@ -165,26 +188,27 @@ export default function Home() {
                   <span>Evolution Progress</span>
                   <span>Next: {evo.next}명</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                   <div 
-                    className="bg-gradient-to-r from-red-500 to-red-600 h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(220,38,38,0.5)]" 
+                    className={`h-full rounded-full transition-all duration-1000 ${index === 0 ? "bg-gradient-to-r from-yellow-400 to-red-500" : "bg-gradient-to-r from-red-500 to-red-600"}`}
                     style={{ width: `${percent}%` }}
                   ></div>
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-4 border-t border-gray-100">
+              {/* 하단 버튼 영역 */}
+              <div className="flex gap-2 pt-4 border-t border-gray-100/50">
                 <button 
                   onClick={() => handleVote(item.id)}
-                  className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 group border border-red-100"
+                  className="flex-1 bg-white border border-red-100 text-red-600 hover:bg-red-50 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 group shadow-sm"
                 >
                   <ThumbsUp className="w-4 h-4 group-hover:scale-110 transition" /> 
-                  공감해요 (+1)
+                  공감해요
                 </button>
 
                 <button 
                   onClick={() => handleShare(item)}
-                  className="flex-1 bg-neutral-900 text-white hover:bg-neutral-700 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-neutral-200 active:scale-95"
+                  className="flex-1 bg-neutral-900 text-white hover:bg-neutral-700 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg active:scale-95"
                 >
                   <Share2 className="w-4 h-4" /> 
                   친구 소환
