@@ -17,7 +17,7 @@ app.add_middleware(
 
 # ★ 사장님의 진짜 키를 넣어주세요!
 url: str = "https://sjdsnkwxpbhrddtmikza.supabase.co"
-key: str = "여기에_진짜_KEY_넣기"
+key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZHNua3d4cGJocmRkdG1pa3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTI5NjEsImV4cCI6MjA4NTIyODk2MX0.wQgyUPAI_eDIye-umVryhxk2LOe3QyQZiUgWYVcDyR0"
 
 supabase: Client = create_client(url, key)
 
