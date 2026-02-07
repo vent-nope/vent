@@ -22,15 +22,9 @@ app.add_middleware(
 # Vercel 배포 시에는 'Settings' -> 'Environment Variables'에 키를 등록하는 것이 안전합니다.
 # ==========================================
 
-# 1. 환경변수에서 가져오기 (추천 방식)
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-
-# 2. (환경변수가 없을 때를 대비한 비상용 하드코딩 - 배포 후엔 지우는 게 좋습니다)
-if not SUPABASE_URL:
-    SUPABASE_URL = "https://sjdsnkwxpbhrddtmikza.supabase.co"
-if not SUPABASE_KEY:
-    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZHNua3d4cGJocmRkdG1pa3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTI5NjEsImV4cCI6MjA4NTIyODk2MX0.wQgyUPAI_eDIye-umVryhxk2LOe3QyQZiUgWYVcDyR0"
+# [수정] 복잡한 설정 다 버리고, 직접 입력합니다. (이게 제일 확실함)
+SUPABASE_URL = "https://sjdsnkwxpbhrddtmikza.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZHNua3d4cGJocmRkdG1pa3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTI5NjEsImV4cCI6MjA4NTIyODk2MX0.wQgyUPAI_eDIye-umVryhxk2LOe3QyQZiUgWYVcDyR0"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
