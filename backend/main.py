@@ -4,9 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 import re
 import uuid
+import os
 
 app = FastAPI()
 
+# CORS 설정 (프론트엔드에서 요청 허용)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,12 +17,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ★ 사장님의 진짜 키를 넣어주세요!
-url: str = "https://sjdsnkwxpbhrddtmikza.supabase.co"
-key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZHNua3d4cGJocmRkdG1pa3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTI5NjEsImV4cCI6MjA4NTIyODk2MX0.wQgyUPAI_eDIye-umVryhxk2LOe3QyQZiUgWYVcDyR0"
+# ==========================================
+# [중요] Supabase 설정
+# Vercel 배포 시에는 'Settings' -> 'Environment Variables'에 키를 등록하는 것이 안전합니다.
+# ==========================================
 
-supabase: Client = create_client(url, key)
+# 1. 환경변수에서 가져오기 (추천 방식)
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
+# 2. (환경변수가 없을 때를 대비한 비상용 하드코딩 - 배포 후엔 지우는 게 좋습니다)
+if not SUPABASE_URL:
+    SUPABASE_URL = "https://sjdsnkwxpbhrddtmikza.supabase.co"
+if not SUPABASE_KEY:
+    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZHNua3d4cGJocmRkdG1pa3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTI5NjEsImV4cCI6MjA4NTIyODk2MX0.wQgyUPAI_eDIye-umVryhxk2LOe3QyQZiUgWYVcDyR0"
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# 데이터 모델 정의
 class Vote(BaseModel):
     complaint_id: int
 
@@ -28,6 +42,7 @@ class CommentModel(BaseModel):
     complaint_id: int
     content: str
 
+# 비속어 필터링 및 전화번호 마스킹 함수
 def clean_text(text: str) -> str:
     if not text: return ""
     bad_words = ["시발", "씨발", "병신", "개새끼", "지랄", "fuck", "shit", "미친", "죽어"]
@@ -37,13 +52,13 @@ def clean_text(text: str) -> str:
     text = re.sub(phone_pattern, "010-****-****", text)
     return text
 
-# 🔥 [수정됨] 불만 등록 (사진 파일 받기 위해 구조 변경)
+# 🔥 [수정됨] 불만 등록 API
 @app.post("/api/report")
 async def create_complaint(
     brand: str = Form(...),
     product: str = Form(...),
     issue: str = Form(...),
-    image: UploadFile = File(None) # 사진은 없을 수도 있음
+    image: UploadFile = File(None) # 이미지는 선택 사항
 ):
     clean_brand = clean_text(brand)
     clean_product = clean_text(product)
@@ -51,45 +66,45 @@ async def create_complaint(
     
     image_url = None
 
-    # 사진이 있다면 Supabase Storage에 업로드
+    # 이미지가 있다면 Supabase Storage 'uploads' 버킷에 업로드
     if image:
         try:
             file_content = await image.read()
             file_ext = image.filename.split(".")[-1]
-            file_name = f"{uuid.uuid4()}.{file_ext}" # 파일명 겹치지 않게 랜덤 생성
+            file_name = f"{uuid.uuid4()}.{file_ext}" # 파일명 중복 방지
             
-            # 'uploads' 버킷에 저장
-            supabase.storage.from_("uploads").upload(file_name, file_content, {"content-type": image.content_type})
+            # 1. 파일 업로드
+            supabase.storage.from_("uploads").upload(
+                path=file_name, 
+                file=file_content, 
+                file_options={"content-type": image.content_type}
+            )
             
-            # 저장된 이미지의 공개 주소 가져오기
-            public_url_data = supabase.storage.from_("uploads").get_public_url(file_name)
-            
-            # get_public_url이 문자열을 반환하는지 객체를 반환하는지 버전에 따라 다를 수 있음
-            # 보통 문자열(URL)을 바로 반환하거나, data 속성 안에 있거나 함.
-            # 최신 supabase-py에서는 바로 URL 문자열을 반환하는 경우가 많음.
-            if isinstance(public_url_data, str):
-                image_url = public_url_data
-            else:
-                # 구버전 대응
-                image_url = public_url_data  # 일단 넣어봄
+            # 2. 공개 URL 가져오기 (최신 방식)
+            image_url = supabase.storage.from_("uploads").get_public_url(file_name)
                 
         except Exception as e:
-            print(f"이미지 업로드 실패: {e}")
+            print(f"⚠️ 이미지 업로드 중 오류 발생: {e}")
+            # 이미지가 실패해도 글은 올라가도록 pass 처리 (필요시 return error 가능)
 
     try:
+        # DB에 저장
         response = supabase.table("complaints").insert({
             "brand": clean_brand,
             "product": clean_product,
             "issue": clean_issue,
-            "image_url": image_url, # 이미지 주소도 같이 저장
+            "image_url": image_url, # 이미지 URL (없으면 null)
             "count": 1 
         }).execute()
+        
         return {"message": "저장 성공", "data": response.data}
+        
     except Exception as e:
-        print(f"DB 저장 실패: {e}")
+        print(f"❌ DB 저장 실패: {e}")
         return {"message": "저장 실패", "error": str(e)}
 
-# 나머지 기능들은 그대로 유지
+# --- 기존 기능 유지 ---
+
 @app.post("/api/vote")
 def vote_complaint(data: Vote, request: Request):
     client_ip = request.headers.get('x-forwarded-for')
@@ -97,10 +112,15 @@ def vote_complaint(data: Vote, request: Request):
     try:
         check = supabase.table("votes").select("*").eq("complaint_id", data.complaint_id).eq("ip_address", client_ip).execute()
         if check.data: return {"message": "ALREADY_VOTED"}
+        
         supabase.table("votes").insert({"complaint_id": data.complaint_id, "ip_address": client_ip}).execute()
+        
+        # 현재 count 가져와서 +1 업데이트
         current_data = supabase.table("complaints").select("count").eq("id", data.complaint_id).execute()
-        current_count = current_data.data[0]['count']
-        supabase.table("complaints").update({"count": current_count + 1}).eq("id", data.complaint_id).execute()
+        if current_data.data:
+            current_count = current_data.data[0]['count']
+            supabase.table("complaints").update({"count": current_count + 1}).eq("id", data.complaint_id).execute()
+            
         return {"message": "SUCCESS"}
     except Exception as e:
         return {"message": "ERROR", "error": str(e)}
@@ -108,7 +128,8 @@ def vote_complaint(data: Vote, request: Request):
 @app.get("/api/complaints")
 def get_complaints():
     try:
-        response = supabase.table("complaints").select("*").execute()
+        # 최신순 정렬 등을 원하면 .order("created_at", desc=True) 추가 가능
+        response = supabase.table("complaints").select("*").order("created_at", desc=True).execute()
         return response.data
     except Exception as e:
         return []
@@ -135,6 +156,7 @@ def delete_complaint(complaint_id: int, password: str):
     ADMIN_PASSWORD = "vent1234"
     if password != ADMIN_PASSWORD: return {"message": "WRONG_PASSWORD"}
     try:
+        # 외래키 제약조건 때문에 자식 데이터(댓글, 투표) 먼저 삭제
         supabase.table("comments").delete().eq("complaint_id", complaint_id).execute()
         supabase.table("votes").delete().eq("complaint_id", complaint_id).execute()
         supabase.table("complaints").delete().eq("id", complaint_id).execute()
