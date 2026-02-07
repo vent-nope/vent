@@ -95,7 +95,7 @@ export default function Home() {
 
             <Link href="/report">
                 <button className="bg-neutral-900 dark:bg-white dark:text-black text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-neutral-700 dark:hover:bg-gray-200 transition shadow-lg">
-                이슈 등록
+                게임 등록
                 </button>
             </Link>
           </div>
@@ -104,8 +104,8 @@ export default function Home() {
 
       <section className="py-12 px-6 max-w-2xl mx-auto text-center">
         <h1 className="text-4xl font-extrabold mb-3 leading-tight">
-          대한민국<br/>
-          <span className="text-red-600 bg-red-50 dark:bg-red-900/30 px-2 rounded-lg">분노 랭킹</span>
+          사소해요<br/>
+          <span className="text-red-600 bg-red-50 dark:bg-red-900/30 px-2 rounded-lg">게임 추천 랭킹</span>
         </h1>
         
         <div className="relative max-w-md mx-auto mt-8">
@@ -122,7 +122,7 @@ export default function Home() {
 
       <section className="max-w-2xl mx-auto px-4 pb-12 w-full flex-1 space-y-6">
         {filteredComplaints.length === 0 ? (
-            <div className="text-center py-20 text-gray-400 dark:text-gray-500"><p>등록된 이슈가 없습니다.</p></div>
+            <div className="text-center py-20 text-gray-400 dark:text-gray-500"><p>등록된 게임이 없습니다.</p></div>
         ) : (
             filteredComplaints.map((item, index) => (
               <div key={item.id} className="relative">

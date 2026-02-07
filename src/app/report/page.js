@@ -48,7 +48,7 @@ export default function Report() {
       const result = await res.json();
       
       if (result.message === "저장 성공") {
-        alert("🔥 이슈가 등록되었습니다! 화력을 모아봅시다.");
+        alert("🔥 게임이 등록되었습니다! 화력을 모아봅시다.");
         router.push("/");
       } else {
         alert("저장 실패: " + JSON.stringify(result));
@@ -81,7 +81,7 @@ export default function Report() {
                 <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">어떤 브랜드인가요?</label>
                 <input 
                     type="text" 
-                    placeholder="예: 삼성전자, 넥슨" 
+                    placeholder="예: 스팀,넥슨" 
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
                     // 👇 입력창: 흰색 -> (다크모드) 더 어두운 회색
@@ -90,10 +90,10 @@ export default function Report() {
             </div>
 
             <div>
-                <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">제품명</label>
+                <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">타이틀</label>
                 <input 
                     type="text" 
-                    placeholder="예: 갤럭시 S24, 메이플스토리" 
+                    placeholder="예:  에이펙스레전드, 메이플스토리" 
                     value={product}
                     onChange={(e) => setProduct(e.target.value)}
                     className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 font-bold text-lg focus:outline-none focus:border-neutral-900 dark:focus:border-gray-400 transition dark:text-white"
@@ -101,7 +101,7 @@ export default function Report() {
             </div>
 
             <div>
-                <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">불만 내용</label>
+                <label className="block text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">추천 내용</label>
                 <textarea 
                     rows="4"
                     placeholder="구체적인 내용을 적어주세요." 
